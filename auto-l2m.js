@@ -10,7 +10,7 @@ const VERSION_PATH = "/sdcard/Download/version.txt";
 if (files.exists(VERSION_PATH)) {
   VERSION = files.read(VERSION_PATH).trim() || VERSION;
 }
-
+console.log(VERSION);
 const SCRIPT_NAME = "auto-l2m.js"; // tên file trên thiết bị (tuỳ bạn)
 const SCRIPT_PATH = "/sdcard/Download/auto-l2m.js"; // đường dẫn thực tế để ghi file
 const UPDATE_URL = "https://raw.githubusercontent.com/hucker106/auto-l2m/main/auto-l2m.js";
@@ -594,3 +594,4 @@ setTimeout(() => {
 }, 200);
 // giữ script sống
 setInterval(() => { }, 1000);
+
