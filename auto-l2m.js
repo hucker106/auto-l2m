@@ -5,6 +5,12 @@
 // ⚙️ CẤU HÌNH CẬP NHẬT
 // ========================
 const VERSION = "1.0.0";
+const VERSION_PATH = "/sdcard/Download/version.txt";
+
+if (files.exists(VERSION_PATH)) {
+  VERSION = files.read(VERSION_PATH).trim() || VERSION;
+}
+
 const SCRIPT_NAME = "auto-l2m.js"; // tên file trên thiết bị (tuỳ bạn)
 const SCRIPT_PATH = "/sdcard/Download/auto-l2m.js"; // đường dẫn thực tế để ghi file
 const UPDATE_URL = "https://raw.githubusercontent.com/hucker106/auto-l2m/main/auto-l2m.js";
@@ -98,6 +104,11 @@ function updateScript(newVer) {
     log("✅ Ghi file thành công: " + SCRIPT_PATH);
     toast("✅ Cập nhật xong: " + newVer + " — Khởi động lại...");
 
+        files.write(VERSION_PATH, newVer);
+    log("💾 Đã lưu version mới: " + newVer);
+
+    toast("✅ Cập nhật xong: " + newVer + " — Khởi động lại...");
+    
     // khởi động lại an toàn
     threads.start(function () {
       sleep(1000);
