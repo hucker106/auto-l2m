@@ -4,7 +4,7 @@
 // ========================
 // ⚙️ CẤU HÌNH CẬP NHẬT
 // ========================
-const VERSION = "1.0.0";
+var VERSION = "1.0.0";
 const VERSION_PATH = "/sdcard/Download/version.txt";
 
 if (files.exists(VERSION_PATH)) {
@@ -594,4 +594,5 @@ setTimeout(() => {
 }, 200);
 // giữ script sống
 setInterval(() => { }, 1000);
+
 
