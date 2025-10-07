@@ -4,21 +4,67 @@
 // ========================
 // ⚙️ CẤU HÌNH CẬP NHẬT
 // ========================
-const SCRIPT_NAME = "floaty_tool.js"; // đổi tên đúng với file script của bạn
-const VERSION = "1.0.0"; // phiên bản hiện tại
-const UPDATE_URL = "https://raw.githubusercontent.com/yourname/yourrepo/main/floaty_tool.js"; 
-const VERSION_URL = "https://raw.githubusercontent.com/yourname/yourrepo/main/version.json"; 
+const VERSION = "1.0.0";
+const SCRIPT_NAME = "auto-l2m.js"; // tên file trên thiết bị (tuỳ bạn)
+const SCRIPT_PATH = "/sdcard/Download/auto-l2m.js"; // đường dẫn thực tế để ghi file
+const UPDATE_URL = "https://raw.githubusercontent.com/hucker106/auto-l2m/main/auto-l2m.js";
+const VERSION_URL = "https://raw.githubusercontent.com/hucker106/auto-l2m/main/version.json";
 
-// ⚙️ Kiểm tra bản mới (gọi đầu script)
-checkForUpdate();
+// ====== FLAG chống chạy nhiều lần ======
+var __checkingUpdate = false;
 
+// ====== So sánh version dạng 1.2.3 ======
+function compareVersion(v1, v2) {
+  let a = v1.split(".").map(Number);
+  let b = v2.split(".").map(Number);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    let x = a[i] || 0, y = b[i] || 0;
+    if (x > y) return 1;
+    if (x < y) return -1;
+  }
+  return 0;
+}
+
+// ====== Hàm check version ======
 function checkForUpdate() {
+  if (__checkingUpdate) {
+    log("🔁 Đang kiểm tra rồi, bỏ qua lần gọi tiếp.");
+    return;
+  }
+  __checkingUpdate = true;
+
   threads.start(function () {
     try {
       toast("🔍 Kiểm tra cập nhật...");
+      log("Đang tải version.json từ: " + VERSION_URL);
+
       let res = http.get(VERSION_URL);
-      if (res.statusCode !== 200) throw "Không tải được version.json";
-      let data = JSON.parse(res.body.string());
+      sleep(300); // ổn định phản hồi
+
+      if (!res) throw "Không nhận được phản hồi (res=null)";
+      log("HTTP status: " + res.statusCode);
+      if (res.statusCode !== 200) throw "Không tải được version.json (code=" + res.statusCode + ")";
+
+      let text = res.body.string().trim();
+      log("version.json raw:\n" + (text.length > 400 ? text.slice(0, 400) + "..." : text));
+
+      // cố parse JSON (cẩn trọng với BOM hoặc text phụ)
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (err) {
+        // thử lấy phần giữa { ... }
+        let s = text.indexOf("{");
+        let e = text.lastIndexOf("}");
+        if (s >= 0 && e > s) {
+          data = JSON.parse(text.slice(s, e + 1));
+        } else {
+          throw "JSON parse lỗi: " + err;
+        }
+      }
+
+      if (!data.version) throw "version.json thiếu trường 'version'";
+
       if (compareVersion(data.version, VERSION) > 0) {
         log("⚡ Có bản mới: " + data.version);
         let note = data.note || "";
@@ -30,34 +76,48 @@ function checkForUpdate() {
       }
     } catch (e) {
       log("❌ Lỗi kiểm tra cập nhật: " + e);
+      toast("Lỗi update: " + e);
+    } finally {
+      __checkingUpdate = false;
     }
   });
 }
 
+// ====== Hàm tải & khởi động lại (auto restart) ======
 function updateScript(newVer) {
   try {
-    toast("⬇️ Đang tải bản " + newVer + "...");
+    toast("⬇️ Đang tải script mới...");
+    log("Tải từ: " + UPDATE_URL);
+
     let res = http.get(UPDATE_URL);
-    if (res.statusCode !== 200) throw "Không tải được file mới.";
-    let path = files.path(SCRIPT_NAME);
-    files.write(path, res.body.string());
-    toast("✅ Đã cập nhật lên bản " + newVer + ". Khởi động lại script!");
-    exit();
+    sleep(400);
+    if (!res || res.statusCode !== 200) throw "Không tải được script mới (code=" + (res ? res.statusCode : "null") + ")";
+
+    let code = res.body.string();
+    files.write(SCRIPT_PATH, code);
+    log("✅ Ghi file thành công: " + SCRIPT_PATH);
+    toast("✅ Cập nhật xong: " + newVer + " — Khởi động lại...");
+
+    // khởi động lại an toàn
+    threads.start(function () {
+      sleep(1000);
+      engines.execScriptFile(SCRIPT_PATH);
+      exit();
+    });
   } catch (e) {
+    log("❌ Lỗi cập nhật: " + e);
     toast("❌ Lỗi cập nhật: " + e);
   }
 }
 
-function compareVersion(v1, v2) {
-  let a1 = v1.split('.').map(Number);
-  let a2 = v2.split('.').map(Number);
-  for (let i = 0; i < Math.max(a1.length, a2.length); i++) {
-    let n1 = a1[i] || 0, n2 = a2[i] || 0;
-    if (n1 > n2) return 1;
-    if (n1 < n2) return -1;
-  }
-  return 0;
-}
+
+
+
+
+checkForUpdate();
+
+
+
 
 
 const CONFIG_PATH = "/sdcard/Download/floaty_config.json";
@@ -112,10 +172,10 @@ function isPortrait() { return !isLandscape(); }
 loadConfig();
 
 let settingsWin = floaty.window(
-  <frame bg="#FFFFFF">   <!-- Nền trắng -->
+  <frame bg="#FFFFFF">  
     <scroll>
       <vertical padding="10">
-        <text text="⚙️ Tùy chọn" textSize="18sp" textColor="#000000" marginBottom="8" /> <!-- Chữ đen -->
+        <text text="⚙️ Tùy chọn" textSize="18sp" textColor="#000000" marginBottom="8" /> 
 
         <horizontal>
           <checkbox id="chk1" text="Biến thân" textColor="#000000" />
@@ -238,7 +298,7 @@ const AUTO_HIDE_DELAY = 5000; // ms
 // === Icon chính ===
 var window = floaty.window(
   <frame bg="#eeee90">
-    <text id="icon" text="≡" textSize="40sp" textColor="#FFFFFF" bg="#AA000000" padding="6" w="15"/>
+    <text id="icon" text="≡" textSize="40sp" textColor="#FFFFFF" bg="#AA000000" padding="6" w="15" />
   </frame>
 );
 
